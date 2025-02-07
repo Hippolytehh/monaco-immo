@@ -64,18 +64,21 @@ urls.forEach(async (x) => {
     const arr = Array.from(document.querySelector(".results.grid").querySelectorAll("article"));
 
     const details = arr.map(x => {
-        // console.log()
         return {
+            title: x.querySelector('div.descr h3').innerHTML,
+            price: x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/\s+/g, "") == "prixsurdemande" ? null : parseFloat(x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/&nbsp;/g, '').replace(' €', '')),
             dataId: parseFloat(x.getAttribute('data-id')),
             mainImage: x.querySelector("div.head img").href,
             shortDescription: x.querySelector("div.head img").alt,
             url: x.querySelector("a").href,
             location: {
-                neighborhood: x.querySelector("div.descr p.lieu") ? x.querySelector("div.descr p.lieu").innerHTML.split(' - <span>').slice(0, 1) : null,
+                neighborhood: x.querySelector("div.descr p.lieu") ? x.querySelector("div.descr p.lieu").innerHTML.split(' - <span>').slice(0, 1)[0] : null,
                 residence: x.querySelector("div.descr p.lieu span") ? x.querySelector("div.descr p.lieu span").innerHTML : null,
             },
         }
     })
 
-    fs.writeFileSync('data.json', JSON.stringify(details));
+    console.log(details)
+
+    // fs.writeFileSync('data.json', JSON.stringify(details));
 })
