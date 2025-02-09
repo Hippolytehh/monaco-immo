@@ -3,9 +3,10 @@ import fs from 'fs';
 
 const BASE_URL = 'https://www.chambre-immobiliere-monaco.mc/';
 
-const year = new Date().getFullYear();        // Get full year (e.g., 2025)
-const month = String(new Date().getMonth() + 1).padStart(2, '0'); // Get month, padded with 0 if needed
-const day = String(new Date().getDate()).padStart(2, '0');
+const CURRENT_DATE = new Date();
+const year = CURRENT_DATE.getFullYear();        // Get full year (e.g., 2025)
+const month = String(CURRENT_DATE.getMonth() + 1).padStart(2, '0'); // Get month, padded with 0 if needed
+const day = String(CURRENT_DATE.getDate()).padStart(2, '0');
 const TIMESTAMP = `${year}${month}${day}`
 
 async function fetchAndCacheHTML(cacheFile, url) {
@@ -42,43 +43,63 @@ async function parseHTML() {
         return x.querySelector('p:nth-child(2) a').href;
     });
 
-    return urls
+    return urls;
 };
 
-const urls = await parseHTML();
+await parseHTML().then(async (urls) => {
 
-urls.forEach(async (x) => {
+    const data = await Promise.all(urls.map(async (x) => {
 
-    const url = `${BASE_URL.slice(0, -1)}${x}`;
+        const url = `${BASE_URL.slice(0, -1)}${x}`;
 
-    const cacheFile = `./cache/${url.split('/').slice(-2)[0]}_${TIMESTAMP}.html`;
+        const cacheFile = `./cache/${url.split('/').slice(-2)[0]}_${TIMESTAMP}.html`;
 
-    // console.log(cacheFile);
+        let details = [];
 
-    const html = await fetchAndCacheHTML(cacheFile, url)
+        let i = 1;
+        while (true) {
+            const indexedUrl = i == 1 ? url : `${url}/${i}`;
+            const indexedCacheFile = `${cacheFile.split('.html')[0]}_page_${i}.html`;
+            const html = await fetchAndCacheHTML(indexedCacheFile, indexedUrl);
 
-    const dom = new JSDOM(html);
+            const dom = new JSDOM(html);
 
-    const document = dom.window.document;
+            const document = dom.window.document;
 
-    const arr = Array.from(document.querySelector(".results.grid").querySelectorAll("article"));
+            i += 1;
 
-    const details = arr.map(x => {
-        return {
-            title: x.querySelector('div.descr h3').innerHTML,
-            price: x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/\s+/g, "") == "prixsurdemande" ? null : parseFloat(x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/&nbsp;/g, '').replace(' €', '')),
-            dataId: parseFloat(x.getAttribute('data-id')),
-            mainImage: x.querySelector("div.head img").href,
-            shortDescription: x.querySelector("div.head img").alt,
-            url: x.querySelector("a").href,
-            location: {
-                neighborhood: x.querySelector("div.descr p.lieu") ? x.querySelector("div.descr p.lieu").innerHTML.split(' - <span>').slice(0, 1)[0] : null,
-                residence: x.querySelector("div.descr p.lieu span") ? x.querySelector("div.descr p.lieu span").innerHTML : null,
-            },
-        }
-    })
+            if (document.querySelector(".noresults") || i >= 20) {
+                break;
+            }
 
-    console.log(details)
+            const arr = Array.from(document.querySelector(".results.grid").querySelectorAll("article"));
 
-    // fs.writeFileSync('data.json', JSON.stringify(details));
-})
+            details = [...details, ...arr.map(x => {
+                return {
+                    fetchDate: CURRENT_DATE,
+                    title: x.querySelector('div.descr h3').innerHTML,
+                    price: x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/\s+/g, "") == "prixsurdemande" ? null : parseFloat(x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/&nbsp;/g, '').replace(' €', '')),
+                    dataId: parseFloat(x.getAttribute('data-id')),
+                    mainImage: x.querySelector("div.head img").href,
+                    shortDescription: x.querySelector("div.head img").alt,
+                    url: x.querySelector("a").href,
+                    location: {
+                        neighborhood: x.querySelector("div.descr p.lieu") ? x.querySelector("div.descr p.lieu").innerHTML.split(' - <span>').slice(0, 1)[0] : null,
+                        residence: x.querySelector("div.descr p.lieu span") ? x.querySelector("div.descr p.lieu span").innerHTML : null,
+                    },
+                }
+            })];
+
+        };
+
+        return details;
+
+    }));
+
+    console.log("\nWriting data to .json file...");
+
+    fs.writeFileSync(`./data/data_${TIMESTAMP}.json`, JSON.stringify({
+        data: data.flat()
+    }));
+
+});
