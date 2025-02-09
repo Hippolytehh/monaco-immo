@@ -1,8 +1,8 @@
 import { JSDOM } from 'jsdom';
 import fs from 'fs';
 
-const BASE_URL = 'https://www.chambre-immobiliere-monaco.mc/';
-
+const DATA_PATH = process.env.DATA_PATH;
+const BASE_URL = process.env.BASE_URL;
 const CURRENT_DATE = new Date();
 const year = CURRENT_DATE.getFullYear();        // Get full year (e.g., 2025)
 const month = String(CURRENT_DATE.getMonth() + 1).padStart(2, '0'); // Get month, padded with 0 if needed
