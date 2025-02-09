@@ -120,6 +120,7 @@ await parseHTML().then(async (urls) => {
 
         console.log("\nWriting data to .json file...");
 
+        fs.mkdirSync('./data', { recursive: true });
         fs.writeFileSync(DATA_PATH, JSON.stringify(existingData));
     };
 
