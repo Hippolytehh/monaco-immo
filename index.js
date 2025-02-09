@@ -96,10 +96,31 @@ await parseHTML().then(async (urls) => {
 
     }));
 
-    console.log("\nWriting data to .json file...");
+    let existingData = { lastUpdate: null, data: [] };
 
-    fs.writeFileSync(`./data/data_${TIMESTAMP}.json`, JSON.stringify({
-        data: data.flat()
-    }));
+    if (fs.existsSync(DATA_PATH)) {
+        try {
+            const fileContent = fs.readFileSync(DATA_PATH, 'utf-8');
+            existingData = JSON.parse(fileContent);
+        } catch (error) {
+            console.error("Error reading existing JSON file:", error);
+        }
+    };
+
+    if (
+        !existingData.lastUpdate || !(
+            new Date(CURRENT_DATE).getDate() == new Date(existingData.lastUpdate).getDate() &&
+            new Date(CURRENT_DATE).getMonth() == new Date(existingData.lastUpdate).getMonth() &&
+            new Date(CURRENT_DATE).getFullYear() == new Date(existingData.lastUpdate).getFullYear()
+        )
+    ) {
+        existingData.lastUpdate = CURRENT_DATE;
+
+        existingData.data = [...existingData.data, ...data.flat()];
+
+        console.log("\nWriting data to .json file...");
+
+        fs.writeFileSync(DATA_PATH, JSON.stringify(existingData));
+    };
 
 });
