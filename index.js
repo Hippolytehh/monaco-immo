@@ -78,15 +78,33 @@ await parseHTML().then(async (urls) => {
                 return {
                     fetchDate: CURRENT_DATE,
                     title: x.querySelector('div.descr h3').innerHTML,
-                    price: x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/\s+/g, "") == "prixsurdemande" ? null : parseFloat(x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/&nbsp;/g, '').replace(' €', '')),
+                    price: x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/\s+/g, "") == "prixsurdemande" ? null : parseFloat(x.querySelector('div.descr p.prix').innerHTML.toLowerCase().replace(/&nbsp;/g, '').replace(' €', '')) + 1000000, // TEST
                     dataId: parseFloat(x.getAttribute('data-id')),
-                    mainImage: x.querySelector("div.head img").href,
                     shortDescription: x.querySelector("div.head img").alt,
-                    url: x.querySelector("a").href,
+                    fullUrl: `${BASE_URL.split('/').slice(0, -1).join('/')}/${x.querySelector("a").href.split('/').slice(1).join('/')}`,
                     location: {
                         neighborhood: x.querySelector("div.descr p.lieu") ? x.querySelector("div.descr p.lieu").innerHTML.split(' - <span>').slice(0, 1)[0] : null,
                         residence: x.querySelector("div.descr p.lieu span") ? x.querySelector("div.descr p.lieu span").innerHTML : null,
                     },
+                    properties: Array.from(x.querySelector('.carac').querySelectorAll('span')).map(item => {
+                        const src = item.querySelector('img').src;
+                        const srcBase = src.split('/').slice(-1)[0];
+                        switch (srcBase) {
+                            case 'surface.svg':
+                                return { "surface": parseFloat(item.innerHTML.split('>').slice(-1)[0]) }
+                            case 'chambres.svg':
+                                return { "bedrooms": parseFloat(item.innerHTML.split('>').slice(-1)[0]) }
+                            case 'bain.svg':
+                                return { "bathrooms": parseFloat(item.innerHTML.split('>').slice(-1)[0]) }
+                            default:
+                                break
+                        };
+                    }).reduce((acc, obj) => {
+                        return { ...acc, ...obj }
+                    }, {}),
+                    images: {
+                        preview: x.querySelector("div.head img").src
+                    }
                 }
             })];
 
@@ -107,21 +125,21 @@ await parseHTML().then(async (urls) => {
         }
     };
 
-    if (
-        !existingData.lastUpdate || !(
-            new Date(CURRENT_DATE).getDate() == new Date(existingData.lastUpdate).getDate() &&
-            new Date(CURRENT_DATE).getMonth() == new Date(existingData.lastUpdate).getMonth() &&
-            new Date(CURRENT_DATE).getFullYear() == new Date(existingData.lastUpdate).getFullYear()
-        )
-    ) {
-        existingData.lastUpdate = CURRENT_DATE;
+    // if (
+    //     !existingData.lastUpdate || !(
+    //         new Date(CURRENT_DATE).getDate() == new Date(existingData.lastUpdate).getDate() &&
+    //         new Date(CURRENT_DATE).getMonth() == new Date(existingData.lastUpdate).getMonth() &&
+    //         new Date(CURRENT_DATE).getFullYear() == new Date(existingData.lastUpdate).getFullYear()
+    //     )
+    // ) {
+    existingData.lastUpdate = CURRENT_DATE;
 
-        existingData.data = [...existingData.data, ...data.flat()];
+    existingData.data = [...existingData.data, ...data.flat()];
 
-        console.log("\nWriting data to .json file...");
+    console.log("\nWriting data to .json file...");
 
-        fs.mkdirSync('./data', { recursive: true });
-        fs.writeFileSync(DATA_PATH, JSON.stringify(existingData));
-    };
+    fs.mkdirSync('./data', { recursive: true });
+    fs.writeFileSync(DATA_PATH, JSON.stringify(existingData));
+    // };
 
 });
