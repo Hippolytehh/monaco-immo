@@ -1,5 +1,6 @@
 import { JSDOM } from 'jsdom';
 import fs from 'fs';
+import { parseHomePage, fetchAndCacheHTML, getTimestamp } from './functions.js';
 
 const DATA_PATH = process.env.DATA_PATH;
 const BASE_URL = process.env.BASE_URL;
@@ -7,52 +8,17 @@ const CURRENT_DATE = new Date();
 const year = CURRENT_DATE.getFullYear();        // Get full year (e.g., 2025)
 const month = String(CURRENT_DATE.getMonth() + 1).padStart(2, '0'); // Get month, padded with 0 if needed
 const day = String(CURRENT_DATE.getDate()).padStart(2, '0');
-const TIMESTAMP = `${year}${month}${day}`
+const TIMESTAMP = getTimestamp(CURRENT_DATE);
 
-async function fetchAndCacheHTML(cacheFile, url) {
+const homePage = `./cache/cache_${TIMESTAMP.slice(0, -2)}.html`;
 
-    // Check if cached file exists
-    if (fs.existsSync(cacheFile)) {
-        console.log("\nLoading from cache...");
-        return fs.readFileSync(cacheFile, 'utf8');
-    }
-
-    console.log("\nFetching from the internet...");
-    const response = await fetch(url);
-    const html = await response.text();
-
-    fs.mkdirSync(cacheFile.split('/').slice(0, -1).join('/'), { recursive: true });
-
-    fs.writeFileSync(cacheFile, html); // Save HTML to cache file
-    return html;
-}
-
-async function parseHTML() {
-
-    const cacheFile = `./cache/cache_${TIMESTAMP}.html`;
-
-    const html = await fetchAndCacheHTML(cacheFile, BASE_URL);
-
-    const dom = new JSDOM(html);
-
-    const document = dom.window.document;
-
-    const areas = Array.from(document.querySelector(".hquartier .table_flex").querySelectorAll("[data-id]"));
-
-    const urls = areas.map(x => {
-        return x.querySelector('p:nth-child(2) a').href;
-    });
-
-    return urls;
-};
-
-await parseHTML().then(async (urls) => {
+await parseHomePage(homePage).then(async (urls) => {
 
     const data = await Promise.all(urls.map(async (x) => {
 
         const url = `${BASE_URL.slice(0, -1)}${x}`;
 
-        const cacheFile = `./cache/${url.split('/').slice(-2)[0]}_${TIMESTAMP}.html`;
+        const cacheFile = `./cache/${url.split('/').slice(-2)[0]}_${TIMESTAMP.slice(0, -4)}.html`;
 
         let details = [];
 
@@ -86,7 +52,7 @@ await parseHTML().then(async (urls) => {
                         neighborhood: x.querySelector("div.descr p.lieu") ? x.querySelector("div.descr p.lieu").innerHTML.split(' - <span>').slice(0, 1)[0] : null,
                         residence: x.querySelector("div.descr p.lieu span") ? x.querySelector("div.descr p.lieu span").innerHTML : null,
                     },
-                    properties: Array.from(x.querySelector('.carac').querySelectorAll('span')).map(item => {
+                    details: Array.from(x.querySelector('.carac').querySelectorAll('span')).map(item => {
                         const src = item.querySelector('img').src;
                         const srcBase = src.split('/').slice(-1)[0];
                         switch (srcBase) {
@@ -104,7 +70,8 @@ await parseHTML().then(async (urls) => {
                     }, {}),
                     images: {
                         preview: x.querySelector("div.head img").src
-                    }
+                    },
+                    pageDetails: null
                 }
             })];
 
