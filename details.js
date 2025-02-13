@@ -27,9 +27,10 @@ const step = 10;
 const entries = Object.entries(hash); // Get first 10 entries
 const newData = [];
 
-let safeSave = false;
-
 for (let i = 0; i < entries.length; i++) {
+
+    let safeSave = false;
+
     const [key, values] = entries[i];
 
     const sorted = values.sort((a, b) => new Date(b.fetchDate) - new Date(a.fetchDate)).slice(0, 2);
@@ -135,7 +136,7 @@ for (let i = 0; i < entries.length; i++) {
                 };
             });
             json.data = data;
-            console.log(`(Safe save) Saving to data.json data between ${i - step} and ${i}: ${newData.slice(i - step, i)}`);
+            console.log(`(Safe save) Saving to data.json data between ${i - step} and ${i}...`);
             fs.writeFileSync(DATA_PATH, JSON.stringify(json));
         };
     };
